@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attack Path Cortex</title>
+<style>
+:root{--bg:#eef1ee;--card:#f8faf8;--fg:#14211d;--mut:#5b6a64;--line:#cfd8d3;--dim:#7d8b85;--acc:#0f6e56;--accbg:#d9efe6;--warn:#d85a30;--warnbg:#fae6df;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1512;--card:#141f1b;--fg:#e4eee9;--mut:#93a39c;--line:#26352f;--dim:#6f8179;--acc:#5dcaa5;--accbg:#12332a;--warn:#f0997b;--warnbg:#3a1f17}}
+:root[data-theme="dark"]{--bg:#0d1512;--card:#141f1b;--fg:#e4eee9;--mut:#93a39c;--line:#26352f;--dim:#6f8179;--acc:#5dcaa5;--accbg:#12332a;--warn:#f0997b;--warnbg:#3a1f17}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+.app{max-width:760px;margin:0 auto;padding:14px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+h1{margin:0;font-size:17px;font-weight:600}
+.sub{font-size:12px;color:var(--mut);margin-top:2px}
+.badge{font-size:11px;padding:3px 8px;border:1px solid var(--line);border-radius:99px;color:var(--acc);background:var(--accbg);white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px}
+.st b{display:block;font-size:19px;font-weight:600;direction:ltr;text-align:right}
+.st span{font-size:11px;color:var(--mut)}
+.st.r b{color:var(--warn)}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
+canvas{display:block;width:100%;height:320px;touch-action:pan-y;cursor:grab}
+.hint{position:absolute;bottom:6px;left:10px;font-size:11px;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;direction:ltr}
+.chip{font:12px ui-monospace,Menlo,Consolas,monospace;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 9px;cursor:pointer}
+.chip.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+.card h2{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--mut)}
+.path{display:flex;align-items:center;gap:4px;direction:ltr;flex-wrap:wrap}
+.hop{font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid var(--line);color:var(--mut)}
+.hop.lit{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
+.hop.safe{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+.ar{color:var(--dim);font-size:12px}
+.bar{height:6px;background:var(--line);border-radius:4px;margin-top:10px;overflow:hidden;direction:ltr}
+.bar i{display:block;height:100%;width:0;background:var(--warn);transition:width .6s,background .6s}
+.note{font-size:12px;color:var(--mut);margin-top:8px;min-height:18px}
+.tr{display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0;direction:ltr}
+.tr b{width:96px;font-weight:500}
+.tr .bg{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.tr .bg i{display:block;height:100%;background:var(--warn);transition:width .6s}
+.tr span{width:26px;color:var(--mut);text-align:right}
+.log{font-size:12px;line-height:1.9;min-height:140px}
+.ln{display:flex;gap:8px;align-items:baseline;border-bottom:1px solid var(--line);padding:2px 0;animation:in .4s}
+.ln small{color:var(--dim);direction:ltr;flex:none}
+.ln em{font-style:normal;color:var(--acc);direction:ltr;flex:none}
+.ln span{unicode-bidi:plaintext}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.foot{font-size:11px;color:var(--mut);text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div><h1>قشرة مسارات الهجوم</h1><div class="sub mono" dir="ltr">ATTACK PATH CORTEX // 6 agents</div></div>
+    <span class="badge">شبكة وهمية</span>
+  </div>
+  <div class="stats">
+    <div class="st"><b class="mono" id="sT">0</b><span>مهام</span></div>
+    <div class="st"><b class="mono" id="sC">0</b><span>مسارات مفحوصة</span></div>
+    <div class="st"><b class="mono" id="sS">0</b><span>عقد محصّنة</span></div>
+    <div class="st r"><b class="mono" id="sR">0</b><span>درجة الخطر</span></div>
+  </div>
+  <div class="stage"><canvas id="cv"></canvas><div class="hint">اسحب لتدوير الدماغ</div></div>
+  <div class="chips" id="chips"></div>
+  <div class="card">
+    <h2>أقصر مسار هجوم إلى قاعدة بيانات الطلاب</h2>
+    <div class="path" id="path"></div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="note" id="hard"></div>
+  </div>
+  <div class="card">
+    <h2>أخطر العقد (عدد المسارات التي تمر عليها)</h2>
+    <div id="top"></div>
+  </div>
+  <div class="card">
+    <h2>سجل الوكلاء</h2>
+    <div class="log" id="log"></div>
+  </div>
+  <div class="foot">مشروع دفاعي بحت · شبكة وهمية · شهد غزواني</div>
+</div>
+<script>
+var GRAPH={
+nodes:["Phishing","StaffPC","StudentPC","LabPC","HelpdeskAcct","Admin","Mail","FileServer","WebServer","DNS","StudentDB","HRDB","GradesDB","VPN","DeanAcct"],
+edges:[[0,1],[0,2],[0,4],[0,14],[1,5],[1,7],[1,6],[1,13],[2,3],[2,8],[3,7],[4,5],[4,6],[6,1],[14,12],[14,7],[13,7],[13,8],[5,10],[5,11],[5,12],[5,7],[5,9],[7,10],[8,10],[9,8]],
+entry:0,target:10
+};
+function mkAdj(removed){var a=GRAPH.nodes.map(function(){return[]});GRAPH.edges.forEach(function(e){if(removed.indexOf(e[1])<0)a[e[0]].push(e[1])});return a}
+function findPaths(adj){
+ var out=[],s=GRAPH.entry,t=GRAPH.target,seen={};
+ (function dfs(n,p){
+  if(n===t){out.push(p.slice());return}
+  if(p.length>8)return;
+  adj[n].forEach(function(m){if(!seen[m]){seen[m]=1;p.push(m);dfs(m,p);p.pop();seen[m]=0}});
+ })(s,[s]);
+ return out;
+}
+function rank(paths){
+ var c={};paths.forEach(function(p){for(var i=1;i<p.length-1;i++)c[p[i]]=(c[p[i]]||0)+1});
+ return Object.keys(c).map(function(k){return{id:+k,n:c[k]}}).sort(function(a,b){return b.n-a.n});
+}
+function shortest(paths){return paths.reduce(function(m,p){return !m||p.length<m.length?p:m},null)}
+function riskOf(n){return Math.round(100*(1-Math.exp(-n/5)))}
+function names(p){return p?p.map(function(i){return GRAPH.nodes[i]}):[]}
+var EV=[];
+(function sim(){
+ var N=GRAPH.nodes.length,E=GRAPH.edges.length,removed=[],hard=[];
+ var adj=mkAdj(removed),P=findPaths(adj),rk=rank(P),first=P.length;
+ function top(r){return r.slice(0,4).map(function(x){return{name:GRAPH.nodes[x.id],n:x.n}})}
+ EV.push({a:0,t:"مسح الشبكة: "+N+" أصل و"+E+" علاقة",path:[],risk:0,top:[],hard:[],calls:0,scan:1});
+ EV.push({a:2,t:"بناء الرسم البياني: "+N+" عقدة و"+E+" رابط",path:[],risk:0,top:[],hard:[],calls:0});
+ EV.push({a:1,t:"وجدت "+P.length+" مسار هجوم · أقصرها: "+names(shortest(P)).join(" → "),path:names(shortest(P)),risk:riskOf(P.length),top:top(rk),hard:[],calls:P.length});
+ EV.push({a:5,t:"أخطر عقدة: "+GRAPH.nodes[rk[0].id]+" يمر عليها "+rk[0].n+" مسار",path:names(shortest(P)),risk:riskOf(P.length),top:top(rk),hard:[],calls:P.length});
+ var rounds=0;
+ while(P.length>0&&rounds<5&&rk.length){
+  var g=rk[0].id;removed.push(g);hard.push(GRAPH.nodes[g]);rounds++;
+  EV.push({a:3,t:"اقتراح: تفعيل MFA وعزل "+GRAPH.nodes[g],path:names(shortest(P)),risk:riskOf(P.length),top:top(rk),hard:hard.slice(),calls:0});
+  adj=mkAdj(removed);P=findPaths(adj);rk=rank(P);
+  var sp=shortest(P);
+  EV.push({a:5,t:P.length?"إعادة الفحص: بقي "+P.length+" مسار · أقصرها: "+names(sp).join(" → "):"إعادة الفحص: لا يوجد أي مسار إلى قاعدة الطلاب",path:names(sp),risk:riskOf(P.length),top:top(rk),hard:hard.slice(),calls:P.length,done:!P.length});
+ }
+ EV.push({a:4,t:"حفظ التقرير في memory/report.md: الخطر من "+riskOf(first)+" إلى "+riskOf(P.length),path:names(shortest(P)),risk:riskOf(P.length),top:top(rk),hard:hard.slice(),calls:0,done:!P.length});
+})();
+var A=[
+{n:"recon.md",r:"parietal",p:[.35,.6,-.35]},
+{n:"planner.md",r:"frontal",p:[0,.35,.95]},
+{n:"grapher.md",r:"motor",p:[.3,.62,.3]},
+{n:"patcher.md",r:"temporal",p:[.78,-.2,.1]},
+{n:"memory.md",r:"hippocampus",p:[-.5,-.15,-.1]},
+{n:"critic.md",r:"occipital",p:[-.1,.2,-1]}
+];
+var cv=document.getElementById("cv"),cx=cv.getContext("2d"),W=0,H=0,dpr=Math.min(window.devicePixelRatio||1,2);
+function size(){var r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;cx.setTransform(dpr,0,0,dpr,0,0)}
+size();addEventListener("resize",size);
+var P=[];
+function add(x,y,z){P.push({x:x,y:y,z:z,a:-1,d:9})}
+for(var i=0;i<2300;i++){
+ var u=Math.random()*2-1,t=Math.random()*6.2832,s=Math.sqrt(1-u*u),dx=s*Math.cos(t),dy=u,dz=s*Math.sin(t);
+ var k=1+.05*Math.sin(9*dx+3*dy)*Math.cos(7*dz);
+ var x=.82*dx*k,y=.68*dy*k,z=1.05*dz*k;
+ if(y<-.25)y=-.25+(y+.25)*.5;
+ if(Math.abs(x)<.09&&y>.15)y-=(.09-Math.abs(x))*2;
+ add(x,y,z);
+}
+for(i=0;i<380;i++){u=Math.random()*2-1;t=Math.random()*6.2832;s=Math.sqrt(1-u*u);add(.42*s*Math.cos(t),-.5+.25*u,-.7+.35*s*Math.sin(t))}
+for(i=0;i<60;i++){add((Math.random()-.5)*.16,-.6-Math.random()*.35,-.25+(Math.random()-.5)*.16)}
+P.forEach(function(p){A.forEach(function(a,j){var d=Math.hypot(p.x-a.p[0],p.y-a.p[1],p.z-a.p[2]);if(d<p.d){p.d=d;p.a=j}})});
+var ry=.6,tilt=.28,focusT=null,hold=0,drag=false,lx=0,act=-1,pulses=[],css={};
+function rd(){var s=getComputedStyle(document.documentElement);["fg","dim","acc","warn","line"].forEach(function(k){css[k]=s.getPropertyValue("--"+k).trim()})}
+rd();matchMedia("(prefers-color-scheme:dark)").addEventListener("change",rd);
+cv.addEventListener("pointerdown",function(e){drag=true;lx=e.clientX;focusT=null;cv.setPointerCapture(e.pointerId)});
+cv.addEventListener("pointermove",function(e){if(drag){ry+=(e.clientX-lx)*.01;lx=e.clientX}});
+cv.addEventListener("pointerup",function(){drag=false});
+cv.addEventListener("pointercancel",function(){drag=false});
+function pr(x,y,z){
+ var c=Math.cos(ry),s=Math.sin(ry),x1=x*c+z*s,z1=-x*s+z*c;
+ var ct=Math.cos(tilt),st=Math.sin(tilt),y1=y*ct-z1*st,z2=y*st+z1*ct;
+ var sc=Math.min(W,H)*.4,f=3.2/(3.2-z2);
+ return {x:W/2+x1*sc*f,y:H/2+8-y1*sc*f,z:z2,f:f}
+}
+function mix(c,a){return c.charAt(0)=="#"?c+Math.round(a*255).toString(16).padStart(2,"0"):c}
+function draw(tm){
+ cx.clearRect(0,0,W,H);
+ if(!drag){
+  if(focusT!==null){
+   var df=Math.atan2(Math.sin(focusT-ry),Math.cos(focusT-ry));ry+=df*.07;
+   if(Math.abs(df)<.03&&tm>hold)focusT=null;
+  }else ry+=.004;
+ }
+ var i,p,q,al;
+ for(i=0;i<P.length;i++){
+  p=P[i];q=pr(p.x,p.y,p.z);al=.25+.5*(q.z+1.2)/2.4;
+  if(p.a===act&&p.d<.55){
+   cx.fillStyle=mix(css.acc,Math.min(1,.5+(1-p.d/.55)*.6));
+   var r=1.8*q.f;cx.fillRect(q.x-r/2,q.y-r/2,r,r);
+  }else{
+   cx.fillStyle=mix(css.dim,Math.max(.08,al*.7));
+   var r2=1.2*q.f;cx.fillRect(q.x-r2/2,q.y-r2/2,r2,r2);
+  }
+ }
+ var o=pr(0,.05,0);
+ if(act>=0){
+  var a=A[act].p,qa=pr(a[0],a[1],a[2]);
+  cx.strokeStyle=mix(css.acc,.5);cx.lineWidth=1;cx.beginPath();cx.moveTo(qa.x,qa.y);cx.lineTo(o.x,o.y);cx.stroke();
+ }
+ for(i=pulses.length-1;i>=0;i--){
+  var pu=pulses[i];pu.t+=.025;
+  if(pu.t>=1){pulses.splice(i,1);continue}
+  var b=A[pu.i].p,m=pr(b[0]*(1-pu.t),b[1]*(1-pu.t)+.05*pu.t,b[2]*(1-pu.t));
+  cx.fillStyle=css.warn;cx.beginPath();cx.arc(m.x,m.y,3.2,0,6.2832);cx.fill();
+ }
+ var pul=(Math.sin(tm/300)+1)/2;
+ cx.strokeStyle=css.acc;cx.lineWidth=1.5;cx.beginPath();cx.arc(o.x,o.y,5+pul*3,0,6.2832);cx.stroke();
+ cx.fillStyle=css.acc;cx.beginPath();cx.arc(o.x,o.y,3,0,6.2832);cx.fill();
+ cx.font="11px ui-monospace,Menlo,Consolas,monospace";cx.textBaseline="middle";
+ cx.fillStyle=css.fg;cx.textAlign="center";cx.fillText("orchestrator",o.x,o.y+17);
+ for(i=0;i<A.length;i++){
+  var pp=A[i].p;q=pr(pp[0],pp[1],pp[2]);
+  if(!(q.z>-.15||i===act))continue;
+  var on=i===act;
+  cx.fillStyle=on?css.acc:css.fg;cx.globalAlpha=on?1:.75;
+  cx.beginPath();cx.arc(q.x,q.y,on?4:2.5,0,6.2832);cx.fill();
+  var right=q.x<W/2+10;cx.textAlign=right?"left":"right";
+  var tx=q.x+(right?9:-9);
+  cx.fillText(A[i].n,tx,q.y-6);
+  cx.fillStyle=css.dim;cx.fillText(A[i].r,tx,q.y+7);
+  cx.globalAlpha=1;
+ }
+ requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+var chips=document.getElementById("chips"),pathEl=document.getElementById("path"),topEl=document.getElementById("top"),hardEl=document.getElementById("hard"),logEl=document.getElementById("log");
+A.forEach(function(a,i){var b=document.createElement("button");b.className="chip";b.textContent=a.n;b.onclick=function(){focus(i)};chips.appendChild(b)});
+function focus(i){
+ act=i;pulses.push({i:i,t:0});
+ var p=A[i].p;focusT=Math.atan2(-p[0],p[2]);hold=performance.now()+2200;
+ [].forEach.call(chips.children,function(c,j){c.classList.toggle("on",j===i)});
+}
+function log(i,txt){
+ var d=document.createElement("div");d.className="ln";
+ var t=new Date().toTimeString().slice(0,8);
+ d.innerHTML="<small class='mono'>"+t+"</small><em class='mono'>"+A[i].n+"</em><span></span>";
+ d.lastChild.textContent=txt;logEl.insertBefore(d,logEl.firstChild);
+ while(logEl.children.length>5)logEl.removeChild(logEl.lastChild);
+}
+function showPath(p,safe){
+ pathEl.innerHTML="";
+ if(!p.length){var d=document.createElement("div");d.className="hop mono";d.textContent=safe?"لا يوجد مسار":"—";if(safe)d.className+=" safe";pathEl.appendChild(d);return}
+ p.forEach(function(h,i){
+  if(i){var s=document.createElement("span");s.className="ar";s.textContent="→";pathEl.appendChild(s)}
+  var d=document.createElement("div");d.className="hop mono lit";d.textContent=h;pathEl.appendChild(d);
+ });
+}
+function showTop(list){
+ topEl.innerHTML="";
+ var mx=Math.max.apply(null,list.map(function(x){return x.n}).concat([1]));
+ if(!list.length){topEl.innerHTML="<div class='note'>لا توجد عقد خطرة متبقية</div>";return}
+ list.forEach(function(x){
+  var r=document.createElement("div");r.className="tr mono";
+  r.innerHTML="<b></b><div class='bg'><i></i></div><span></span>";
+  r.children[0].textContent=x.name;r.children[1].firstChild.style.width=(x.n/mx*100)+"%";r.children[2].textContent=x.n;
+  topEl.appendChild(r);
+ });
+}
+var step=0,tasks=0,calls=0,riskNow=0,riskTo=0;
+var sT=document.getElementById("sT"),sC=document.getElementById("sC"),sS=document.getElementById("sS"),sR=document.getElementById("sR"),bar=document.getElementById("bar");
+function tick(){
+ var e=EV[step%EV.length];
+ if(step>0&&step%EV.length===0){tasks=0;calls=0;logEl.innerHTML=""}
+ focus(e.a);log(e.a,e.t);
+ showPath(e.path,e.done);showTop(e.top);
+ hardEl.textContent=e.hard.length?"تم تحصين: "+e.hard.join("، "):"";
+ tasks++;calls+=e.calls;riskTo=e.risk;
+ sT.textContent=tasks;sC.textContent=calls;sS.textContent=e.hard.length;
+ bar.style.width=riskTo+"%";bar.style.background=riskTo<35?"var(--acc)":"var(--warn)";
+ step++;
+}
+setInterval(function(){riskNow+=(riskTo-riskNow)*.3;sR.textContent=Math.round(riskNow)},120);
+tick();setInterval(tick,3000);
+</script>
+</body>
+</html>
